@@ -4,55 +4,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse the incoming request body
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const messages = body?.messages;
+    const { message } = req.body;
 
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: "Invalid request: messages array required" });
-    }
+    // This is your simple “AI” response logic
+    // Later you can replace this with OpenAI, Gemini, or your backend logic
+    let reply = "I'm not sure I understood that.";
 
-    // Get API key from environment
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "Missing OpenAI API key" });
-    }
+    if (message.toLowerCase().includes("hi")) reply = "Hey you 😄";
+    else if (message.toLowerCase().includes("how are you")) reply = "I'm doing great, thanks for asking!";
+    else if (message.toLowerCase().includes("bye")) reply = "Goodbye 👋";
+    else reply = `You said: "${message}"`;
 
-    // Call OpenAI Chat API
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: messages,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "OpenAI API error",
-        details: data,
-      });
-    }
-
-    // Extract the assistant’s reply text
-    const reply = data?.choices?.[0]?.message?.content || "No response from Silam.";
-
-    // Send it back to frontend
-    return res.status(200).json({
-      reply,
-      raw: data,
-    });
+    // ✅ Always respond with a JSON object containing `reply`
+    res.status(200).json({ reply });
   } catch (error) {
-    console.error("Chat API Error:", error);
-    return res.status(500).json({
-      error: "Server error",
-      message: error.message,
-    });
+    console.error("Server error:", error);
+    res.status(500).json({ reply: "A server error occurred." });
   }
 }

@@ -1,168 +1,77 @@
-/* 🌙 Silam NeuroChat Style — simple, dark theme with smooth chat layout */
+import { useState } from "react";
+import "./styles.css";
 
-body {
-  margin: 0;
-  font-family: "Inter", system-ui, sans-serif;
-  background-color: #121212;
-  color: #e0e0e0;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  height: 100vh;
-}
+function App() {
+  const [messages, setMessages] = useState([
+    { sender: "Silam", text: "Hey there 👋 I'm Silam NeuroChat. How can I help?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-.app {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 700px;
-  height: 100%;
-  background-color: #1e1e1e;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
-}
+  const sendMessage = async () => {
+    if (!input.trim()) return;
 
-/* ---------- HEADER ---------- */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #242424;
-  padding: 16px 20px;
-  border-bottom: 1px solid #333;
-}
+    const newMessages = [...messages, { sender: "You", text: input }];
+    setMessages(newMessages);
+    setInput("");
+    setLoading(true);
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
 
-.avatar {
-  background-color: #4f46e5;
-  color: white;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: bold;
-}
+      const data = await res.json();
+      const assistantText = data.reply || "No response from Silam.";
 
-.titles h1 {
-  font-size: 1.1rem;
-  margin: 0;
-  color: #ffffff;
-}
+      setMessages([...newMessages, { sender: "Silam", text: assistantText }]);
+    } catch (err) {
+      console.error("Error:", err);
+      setMessages([
+        ...newMessages,
+        { sender: "Silam", text: "⚠️ Connection issue. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-.titles p {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #aaaaaa;
-}
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") sendMessage();
+  };
 
-/* ---------- CHAT AREA ---------- */
-.chat {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scroll-behavior: smooth;
-}
-
-/* ---------- MESSAGE BUBBLES ---------- */
-.msg {
-  display: flex;
+  return (
+    <div className="chat-container">
+      <h1 className="chat-title">Silam NeuroChat 🤖</h1>
+      <div className="chat-box">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`message ${
+              msg.sender === "You" ? "user-message" : "ai-message"
+            }`}
+          >
+            <strong>{msg.sender}:</strong> <span>{msg.text}</span>
+          </div>
+        ))}
+        {loading && <div className="typing">Silam is thinking...</div>}
+      </div>
+      <div className="input-area">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+        />
+        <button onClick={sendMessage} disabled={loading}>
+          {loading ? "..." : "Send"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-.msg.user {
-  justify-content: flex-end;
-}
-
-.msg.assistant {
-  justify-content: flex-start;
-}
-
-.bubble {
-  background-color: #333;
-  color: #ffffff;
-  padding: 10px 14px;
-  border-radius: 10px;
-  max-width: 80%;
-  line-height: 1.4;
-  word-wrap: break-word;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.user .bubble {
-  background-color: #4f46e5;
-  color: #ffffff;
-  border-bottom-right-radius: 2px;
-}
-
-.assistant .bubble {
-  background-color: #2d2d2d;
-  border-bottom-left-radius: 2px;
-}
-
-/* ---------- COMPOSER ---------- */
-.composer {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  background-color: #242424;
-  border-top: 1px solid #333;
-  gap: 10px;
-}
-
-.composer input {
-  flex: 1;
-  background-color: #333;
-  border: none;
-  color: #e0e0e0;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 1rem;
-  outline: none;
-}
-
-.composer input:disabled {
-  opacity: 0.6;
-}
-
-.composer button {
-  background-color: #4f46e5;
-  border: none;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s ease;
-}
-
-.composer button:hover {
-  background-color: #4338ca;
-}
-
-.composer button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ---------- SCROLLBAR ---------- */
-.chat::-webkit-scrollbar {
-  width: 8px;
-}
-.chat::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 10px;
-}
-.chat::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
+export default App;

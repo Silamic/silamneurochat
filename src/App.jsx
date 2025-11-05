@@ -1,31 +1,64 @@
-const send = async () => {
-  if (!input.trim()) return;
+import { useState } from "react";
+import "./styles.css";
 
-  const userMessage = { sender: "You", text: input };
-  setMessages((prev) => [...prev, userMessage]);
-  setInput("");
-  setLoading(true);
+export default function App() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: input }),
-    });
+  const sendMessage = async () => {
+    if (!input.trim()) return;
 
-    const data = await res.json();
-    const assistantText = data.reply || "No response from Silam.";
+    const newMessage = { sender: "user", text: input };
+    setMessages((prev) => [...prev, newMessage]);
+    setInput("");
+    setLoading(true);
 
-    const botMessage = { sender: "Silam", text: assistantText };
-    setMessages((prev) => [...prev, botMessage]);
-  } catch (err) {
-    console.error("Error:", err);
-    const errorMessage = {
-      sender: "Silam",
-      text: "Error connecting to Silam.",
-    };
-    setMessages((prev) => [...prev, errorMessage]);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
+      const data = await res.json();
+      const assistantText = data.reply || "No response from Silam.";
+      setMessages((prev) => [...prev, { sender: "ai", text: assistantText }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "⚠️ Error connecting to Silam." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="chat-container">
+      <div className="chat-header">Silam NeuroChat 🤖</div>
+
+      <div className="chat-window">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`chat-bubble ${msg.sender === "user" ? "user" : "ai"}`}
+          >
+            {msg.text}
+          </div>
+        ))}
+        {loading && <div className="chat-bubble ai">💭 Thinking...</div>}
+      </div>
+
+      <div className="chat-input-area">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        />
+        <button onClick={sendMessage}>Send</button>
+      </div>
+    </div>
+  );
+}

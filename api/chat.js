@@ -1,3 +1,10 @@
+// api/chat.js
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // Set this in your Vercel project settings
+});
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -6,19 +13,28 @@ export default async function handler(req, res) {
   try {
     const { message } = req.body;
 
-    // This is your simple “AI” response logic
-    // Later you can replace this with OpenAI, Gemini, or your backend logic
-    let reply = "I'm not sure I understood that.";
+    // Validate
+    if (!message || message.trim() === "") {
+      return res.status(400).json({ error: "No message provided" });
+    }
 
-    if (message.toLowerCase().includes("hi")) reply = "Hey you 😄";
-    else if (message.toLowerCase().includes("how are you")) reply = "I'm doing great, thanks for asking!";
-    else if (message.toLowerCase().includes("bye")) reply = "Goodbye 👋";
-    else reply = `You said: "${message}"`;
+    // Send request to OpenAI
+    const completion = await client.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are Silam NeuroChat, a helpful, friendly, and intelligent assistant built by Given Silamulela.",
+        },
+        { role: "user", content: message },
+      ],
+    });
 
-    // ✅ Always respond with a JSON object containing `reply`
+    const reply = completion.choices[0].message.content;
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("Server error:", error);
-    res.status(500).json({ reply: "A server error occurred." });
+    console.error("Error from OpenAI:", error);
+    res.status(500).json({ error: "A server error occurred." });
   }
 }

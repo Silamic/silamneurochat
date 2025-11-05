@@ -1,16 +1,18 @@
 import { useState } from "react";
 import "./styles.css";
 
-export default function App() {
-  const [messages, setMessages] = useState([]);
+function App() {
+  const [messages, setMessages] = useState([
+    { sender: "Silam", text: "Hey there 👋 I'm Silam NeuroChat. How can I help?" },
+  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const newMessage = { sender: "user", text: input };
-    setMessages((prev) => [...prev, newMessage]);
+    const newMessages = [...messages, { sender: "You", text: input }];
+    setMessages(newMessages);
     setInput("");
     setLoading(true);
 
@@ -20,45 +22,56 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
       });
+
       const data = await res.json();
       const assistantText = data.reply || "No response from Silam.";
-      setMessages((prev) => [...prev, { sender: "ai", text: assistantText }]);
+
+      setMessages([...newMessages, { sender: "Silam", text: assistantText }]);
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: "⚠️ Error connecting to Silam." },
+      console.error("Error:", err);
+      setMessages([
+        ...newMessages,
+        { sender: "Silam", text: "⚠️ Connection issue. Please try again." },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") sendMessage();
+  };
+
   return (
     <div className="chat-container">
-      <div className="chat-header">Silam NeuroChat 🤖</div>
-
-      <div className="chat-window">
+      <h1 className="chat-title">Silam NeuroChat 🤖</h1>
+      <div className="chat-box">
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`chat-bubble ${msg.sender === "user" ? "user" : "ai"}`}
+            className={`message ${
+              msg.sender === "You" ? "user-message" : "ai-message"
+            }`}
           >
-            {msg.text}
+            <strong>{msg.sender}:</strong> <span>{msg.text}</span>
           </div>
         ))}
-        {loading && <div className="chat-bubble ai">💭 Thinking...</div>}
+        {loading && <div className="typing">Silam is thinking...</div>}
       </div>
-
-      <div className="chat-input-area">
+      <div className="input-area">
         <input
           type="text"
           placeholder="Type a message..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyPress={handleKeyPress}
         />
-        <button onClick={sendMessage}>Send</button>
+        <button onClick={sendMessage} disabled={loading}>
+          {loading ? "..." : "Send"}
+        </button>
       </div>
     </div>
   );
 }
+
+export default App;

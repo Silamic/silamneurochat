@@ -1,113 +1,72 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './styles.css';
+import { useState } from "react";
 
-const STORAGE_KEY = 'silam_neurochat_history';
+function App() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
 
-const defaultSystemMessage = {
-  role: 'system',
-  content: 'You are Silam, a friendly and intelligent AI assistant. Keep your responses concise and helpful.'
-};
+  const send = async () => {
+    if (!input.trim()) return;
 
-export default function App() {
-  const [messages, setMessages] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [defaultSystemMessage];
-    } catch {
-      return [defaultSystemMessage];
-    }
-  });
-
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
-
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text) return;
-
-    const newMessages = [...messages, { role: 'user', content: text }];
-    setMessages(newMessages);
-    setInput('');
-    setLoading(true);
-
-    // Temporary typing indicator
-    setMessages(m => [...m, { role: 'assistant', content: 'Silam is thinking...' }]);
+    const newMessage = { role: "user", content: input };
+    setMessages([...messages, newMessage]);
+    setInput("");
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages })
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: input }),
       });
 
       const data = await res.json();
-      const reply =
-        data?.choices?.[0]?.message?.content ||
-        data?.generated_text ||
-        'No response from Silam.';
+      const assistantText = data.reply || "No response from Silam.";
 
-      setMessages(m => {
-        const updated = m.slice(0, -1);
-        return [...updated, { role: 'assistant', content: reply }];
-      });
-    } catch (err) {
-      setMessages(m => {
-        const updated = m.slice(0, -1);
-        return [...updated, { role: 'assistant', content: `Error: ${err.message}` }];
-      });
-    } finally {
-      setLoading(false);
+      setMessages((prev) => [...prev, { role: "assistant", content: assistantText }]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Error connecting to Silam." }]);
     }
-  }
-
-  function clearHistory() {
-    localStorage.removeItem(STORAGE_KEY);
-    setMessages([defaultSystemMessage]);
-  }
+  };
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="brand">
-          <div className="avatar">S</div>
-          <div>
-            <div className="name">Silam</div>
-            <div className="tagline">Your NeuroChat Assistant</div>
-          </div>
-        </div>
-        <button className="clear-btn" onClick={clearHistory}>Clear</button>
-      </header>
-
-      <main className="chat-area">
-        {messages.filter(m => m.role !== 'system').map((msg, i) => (
-          <div key={i} className={`message ${msg.role}`}>
-            <div className="bubble">{msg.content}</div>
+    <div className="flex flex-col h-screen bg-gray-100 p-4">
+      <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">
+        Silam NeuroChat 🤖
+      </h1>
+      <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow p-4 space-y-2">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`p-2 rounded-lg max-w-xl ${
+              msg.role === "user"
+                ? "bg-blue-100 self-end text-right"
+                : "bg-gray-200 self-start text-left"
+            }`}
+          >
+            <b>{msg.role === "user" ? "You" : "Silam"}:</b> {msg.content}
           </div>
         ))}
-        <div ref={bottomRef} />
-      </main>
-
-      <footer className="input-area">
+      </div>
+      <div className="mt-4 flex">
         <input
+          type="text"
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && sendMessage()}
-          placeholder="Type your message..."
-          disabled={loading}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+          placeholder="Type a message..."
+          className="flex-1 border border-gray-300 rounded-l-lg p-2"
         />
-        <button onClick={sendMessage} disabled={loading}>
-          {loading ? '...' : 'Send'}
+        <button
+          onClick={send}
+          className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700"
+        >
+          Send
         </button>
-      </footer>
+      </div>
     </div>
   );
 }
+
+export default App;

@@ -1,40 +1,84 @@
-// api/chat.js
-import OpenAI from "openai";
+import React, { useState, useEffect, useRef } from "react";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Set this in your Vercel project settings
-});
+export default function App() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null);
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  try {
-    const { message } = req.body;
+  async function send() {
+    const text = input.trim();
+    if (!text) return;
 
-    // Validate
-    if (!message || message.trim() === "") {
-      return res.status(400).json({ error: "No message provided" });
+    const userMsg = { role: "user", content: text };
+    setMessages((m) => [...m, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        setMessages((m) => [...m, { role: "assistant", content: "Error: " + (err.error || err.message) }]);
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      const assistantText = data.reply || "No response from Silam.";
+      setMessages((m) => [...m, { role: "assistant", content: assistantText }]);
+    } catch (e) {
+      setMessages((m) => [...m, { role: "assistant", content: "Error connecting to Silam." }]);
+    } finally {
+      setLoading(false);
     }
-
-    // Send request to OpenAI
-    const completion = await client.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Silam NeuroChat, a helpful, friendly, and intelligent assistant built by Given Silamulela.",
-        },
-        { role: "user", content: message },
-      ],
-    });
-
-    const reply = completion.choices[0].message.content;
-    res.status(200).json({ reply });
-  } catch (error) {
-    console.error("Error from OpenAI:", error);
-    res.status(500).json({ error: "A server error occurred." });
   }
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="brand">
+          <div className="avatar">🤖</div>
+          <div className="titles">
+            <h1>Silam NeuroChat</h1>
+            <p>Hey there! How can I help you today?</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="chat">
+        {messages.map((m, i) => (
+          <div key={i} className={"msg " + (m.role === "assistant" ? "assistant" : "user")}>
+            <div className="bubble">
+              <strong>{m.role === "assistant" ? "Silam" : "You"}:</strong> {m.content}
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </main>
+
+      <footer className="composer">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+          disabled={loading}
+        />
+        <button onClick={send} disabled={loading}>
+          {loading ? "..." : "Send"}
+        </button>
+      </footer>
+    </div>
+  );
 }

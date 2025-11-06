@@ -1,4 +1,3 @@
-// src/lib/db.js
 import { openDB } from "idb";
 
 const DB_NAME = "SilamChat";

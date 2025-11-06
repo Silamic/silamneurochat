@@ -4,8 +4,8 @@ import ChatInput from "./components/ChatInput";
 import ModelSelector from "./components/ModelSelector";
 import PromptEditor from "./components/PromptEditor";
 import ThemeToggle from "./components/ThemeToggle";
+import CostBadge from "./components/CostBadge";
 import { saveConversation, loadConversations } from "./lib/db";
-import { MODELS } from "./lib/models";
 
 const DEFAULT_PROMPT = "You are Silam, a super-intelligent, witty, and helpful AI.";
 
@@ -13,7 +13,6 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [streaming, setStreaming] = useState(false);
   const [model, setModel] = useState("gpt-4o-mini");
-  const [provider, setProvider] = useState("openai");
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_PROMPT);
   const [theme, setTheme] = useState("dark");
   const esRef = useRef(null);
@@ -44,13 +43,13 @@ export default function App() {
     setMessages((m) => [...m, assistantMsg]);
 
     if (esRef.current) esRef.current.close();
+
     const es = new EventSource("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages: [{ role: "system", content: systemPrompt }, ...messages, userMsg],
         model,
-        provider,
       }),
     });
 
@@ -62,14 +61,23 @@ export default function App() {
         setStreaming(false);
         return;
       }
-      const data = JSON.parse(e.data);
-      if (data.content) {
-        setMessages((m) => {
-          const newM = [...m];
-          newM[newM.length - 1].content += data.content;
-          return newM;
-        });
-      }
+      try {
+        const data = JSON.parse(e.data);
+        if (data.content) {
+          setMessages((m) => {
+            const newM = [...m];
+            newM[newM.length - 1].content += data.content;
+            return newM;
+          });
+        }
+        if (data.cost) {
+          setMessages((m) => {
+            const newM = [...m];
+            newM[newM.length - 1].cost = data.cost;
+            return newM;
+          });
+        }
+      } catch {}
     };
 
     es.onerror = () => {
@@ -97,9 +105,10 @@ export default function App() {
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-600">
             Silam NeuroChat
           </h1>
-          <div className="flex gap-2">
-            <ModelSelector model={model} provider={provider} onChange={setModel} onProviderChange={setProvider} />
+          <div className="flex gap-2 items-center">
+            <ModelSelector model={model} onChange={setModel} />
             <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "dark" ? "light" : "dark")} />
+            <CostBadge />
           </div>
         </header>
 

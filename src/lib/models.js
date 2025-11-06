@@ -1,4 +1,3 @@
-// src/lib/models.js
 export const MODELS = {
   openai: [
     { id: "gpt-4o", name: "GPT-4o" },

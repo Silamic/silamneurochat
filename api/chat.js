@@ -1,21 +1,23 @@
-// api/chat.js
 import OpenAI from "openai";
-import { estimateTokens, calculateCost, logMessageCost, getTodayCost } from "../src/lib/cost.js";
+import { estimateTokens, calculateCost, logMessageCost } from "../src/lib/cost.js";
+
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { messages, model = "gpt-4o-mini", temperature = 0.7 } = req.body;
+  let body = "";
+  for await (const chunk of req) body += chunk;
+  const { messages = [], model = "gpt-4o-mini", temperature = 0.7 } = JSON.parse(body || "{}");
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
-
-    const client = new OpenAI({ apiKey });
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const stream = await client.chat.completions.create({
       model,
       messages,
@@ -24,31 +26,28 @@ export default async function handler(req, res) {
     });
 
     let inputTokens = 0;
-    let outputTokens = 0;
-    let streamedContent = "";
+    let streamed = "";
 
-    for (const msg of messages) {
-      inputTokens += estimateTokens(msg.content);
-    }
+    for (const m of messages) inputTokens += estimateTokens(m.content);
 
     for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        streamedContent += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      const txt = chunk.choices[0]?.delta?.content || "";
+      if (txt) {
+        streamed += txt;
+        res.write(`data: ${JSON.stringify({ content: txt })}\n\n`);
       }
     }
 
-    outputTokens = estimateTokens(streamedContent);
+    const outputTokens = estimateTokens(streamed);
     const cost = calculateCost(model, inputTokens, outputTokens);
     await logMessageCost({ model, inputTokens, outputTokens, cost });
 
-    res.write(`data: ${JSON.stringify({ cost: cost.toFixed(6), totalToday: await getTodayCost() })}\n\n`);
+    res.write(`data: ${JSON.stringify({ cost: cost.toFixed(6) })}\n\n`);
     res.write("data: [DONE]\n\n");
     res.end();
-  } catch (err) {
-    console.error(err);
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+  } catch (e) {
+    console.error(e);
+    res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
     res.end();
   }
 }

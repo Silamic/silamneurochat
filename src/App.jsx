@@ -1,47 +1,59 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+import React, { useState } from "react";
+import "./styles.css";
 
-  const { message } = req.body;
+function App() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
 
-  if (!message) {
-    return res.status(400).json({ error: "Missing message in request body" });
-  }
+  const sendMessage = async () => {
+    if (!input.trim()) return;
 
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "Missing OpenAI API key" });
+    const userMessage = { sender: "You", text: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
+
+      const data = await res.json();
+      const reply = data.reply || "No response from Silam.";
+      setMessages((prev) => [...prev, { sender: "Silam", text: reply }]);
+    } catch (err) {
+      console.error("Error:", err);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "Silam", text: "Error connecting to Silam." },
+      ]);
     }
+  };
 
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "You are Silam, a friendly, helpful AI assistant." },
-          { role: "user", content: message },
-        ],
-      }),
-    });
-
-    const data = await openaiRes.json();
-
-    // Handle OpenAI error responses
-    if (!openaiRes.ok) {
-      console.error("OpenAI error:", data);
-      return res.status(500).json({ error: data.error?.message || "OpenAI API error" });
-    }
-
-    const reply = data.choices?.[0]?.message?.content?.trim() || "No reply received.";
-    res.status(200).json({ reply });
-  } catch (err) {
-    console.error("Server error:", err);
-    res.status(500).json({ error: "Server error: " + err.message });
-  }
+  return (
+    <div className="chat-container">
+      <h1 className="title">Silam NeuroChat 🤖</h1>
+      <div className="chat-box">
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            className={`message ${msg.sender === "You" ? "user" : "bot"}`}
+          >
+            <strong>{msg.sender}:</strong> {msg.text}
+          </div>
+        ))}
+      </div>
+      <div className="input-container">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+        />
+        <button onClick={sendMessage}>Send</button>
+      </div>
+    </div>
+  );
 }
+
+export default App;

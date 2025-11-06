@@ -12,7 +12,7 @@ export default function ChatBubble({ msg, onRegenerate }) {
           msg.role === "user" ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-100"
         }`}
       >
-        {msg.role === "assistant" && (
+        {msg.role === "assistant" && onRegenerate && (
           <button
             onClick={onRegenerate}
             className="float-right ml-2 text-xs opacity-70 hover:opacity-100"
@@ -26,6 +26,11 @@ export default function ChatBubble({ msg, onRegenerate }) {
         >
           {msg.content}
         </ReactMarkdown>
+        {msg.cost && (
+          <div className="text-xs opacity-60 mt-1 font-mono">
+            Cost: <strong>${parseFloat(msg.cost).toFixed(6)}</strong>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,97 +1,54 @@
+// api/chat.js
 import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import { Groq } from "groq-sdk";
-import fetch from "node-fetch";
-
-const providers = {
-  openai: (key) => new OpenAI({ apiKey: key }),
-  anthropic: (key) => new Anthropic({ apiKey: key }),
-  groq: (key) => new Groq({ apiKey: key }),
-};
-
-const tools = [
-  {
-    name: "get_weather",
-    description: "Get current weather for a city",
-    parameters: {
-      type: "object",
-      properties: { city: { type: "string" } },
-      required: ["city"],
-    },
-  },
-  {
-    name: "calculator",
-    description: "Evaluate math expression",
-    parameters: {
-      type: "object",
-      properties: { expr: { type: "string" } },
-      required: ["expr"],
-    },
-  },
-];
+import { estimateTokens, calculateCost, logMessageCost, getTodayCost } from "../src/lib/cost.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { messages, model = "gpt-4o-mini", provider = "openai", temperature = 0.7 } = req.body;
+  const { messages, model = "gpt-4o-mini", temperature = 0.7 } = req.body;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
   try {
-    const apiKey = process.env[`${provider.toUpperCase()}_API_KEY`];
-    if (!apiKey) throw new Error(`Missing ${provider.toUpperCase()}_API_KEY`);
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
 
-    const client = providers[provider](apiKey);
+    const client = new OpenAI({ apiKey });
+    const stream = await client.chat.completions.create({
+      model,
+      messages,
+      temperature,
+      stream: true,
+    });
 
-    const stream = await (provider === "anthropic"
-      ? client.messages.stream({
-          model,
-          max_tokens: 1024,
-          temperature,
-          messages,
-          tools,
-        })
-      : client.chat.completions.create({
-          model,
-          messages,
-          temperature,
-          stream: true,
-          tools,
-        }));
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let streamedContent = "";
 
-    for await (const chunk of stream) {
-      const content = provider === "anthropic" ? chunk.delta?.text : chunk.choices[0]?.delta?.content;
-      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    for (const msg of messages) {
+      inputTokens += estimateTokens(msg.content);
     }
 
-    // Tool calls
-    const final = provider === "anthropic" ? await stream.finalMessage() : await stream;
-    if (final?.tool_calls) {
-      for (const tc of final.tool_calls) {
-        const result = await executeTool(tc);
-        res.write(`data: ${JSON.stringify({ tool: result })}\n\n`);
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        streamedContent += content;
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
       }
     }
 
+    outputTokens = estimateTokens(streamedContent);
+    const cost = calculateCost(model, inputTokens, outputTokens);
+    await logMessageCost({ model, inputTokens, outputTokens, cost });
+
+    res.write(`data: ${JSON.stringify({ cost: cost.toFixed(6), totalToday: await getTodayCost() })}\n\n`);
     res.write("data: [DONE]\n\n");
     res.end();
   } catch (err) {
     console.error(err);
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
     res.end();
-  }
-}
-
-async function executeTool(tc) {
-  const { name, input } = tc.function;
-  if (name === "get_weather") {
-    const data = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current_weather=true`).then(r => r.json());
-    return { name, result: `Berlin: ${data.current_weather.temperature}°C` };
-  }
-  if (name === "calculator") {
-    const result = eval(input.expr); // safe in sandbox
-    return { name, result };
   }
 }

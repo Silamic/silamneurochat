@@ -13,6 +13,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [streaming, setStreaming] = useState(false);
   const [model, setModel] = useState("gpt-4o-mini");
+  const [provider, setProvider] = useState("openai");
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_PROMPT);
   const [theme, setTheme] = useState("dark");
   const bottomRef = useRef(null);
@@ -44,6 +45,7 @@ export default function App() {
     const payload = {
       messages: [{ role: "system", content: systemPrompt }, ...messages, userMsg],
       model,
+      provider,
     };
 
     const response = await fetch("/api/chat", {
@@ -104,42 +106,46 @@ export default function App() {
   };
 
   const regenerateLast = () => {
-    if (messages[messages.length - 1]?.role !== "assistant") follow;
+    if (messages[messages.length - 1]?.role !== "assistant") return;
     setMessages((m) => m.slice(0, -1));
     const lastUser = messages[messages.length - 2];
     if (lastUser) sendMessage(lastUser.content);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
-      <div className="max-w-4xl mx-auto p-4">
-        <header className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-600">
-            Silam NeuroChat
-          </h1>
-          <div className="flex gap-2 items-center">
-            <ModelSelector model={model} onChange={setModel} />
+    <div className={`min-h-screen ${theme === "dark" ? "dark" : "light"}`}>
+      <div className="app-container">
+
+        <header className="header">
+          <h1 className="title">Silam NeuroChat</h1>
+          <div className="controls">
+            <ModelSelector model={model} provider={provider} onChange={setModel} onProviderChange={setProvider} />
             <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "dark" ? "light" : "dark")} />
-            <CostBadge />
+            <CostBadge className="cost-badge" />
           </div>
         </header>
 
-        <PromptEditor prompt={systemPrompt} onChange={setSystemPrompt} />
-
-        <div className="bg-black/30 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden">
-          <div className="h-96 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
-              <ChatBubble
-                key={i}
-                msg={msg}
-                onRegenerate={i === messages.length - 1 ? regenerateLast : null}
-              />
-            ))}
-            <div ref={bottomRef} />
-          </div>
-          <ChatInput onSend={sendMessage} disabled={streaming} />
+        <div className="prompt-editor">
+          <PromptEditor prompt={systemPrompt} onChange={setSystemPrompt} />
         </div>
-      </div>
-    </div>
-  );
-}
+
+        <div className="chat-box">
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`bubble ${msg.role === "user" ? "user-bubble" : "bot-bubble"}`}
+              style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start" }}
+            >
+              {msg.role === "assistant" && i === messages.length - 1 && (
+                <button className="regen-btn" onClick={regenerateLast}>Regenerate</button>
+              )}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {msg.content}
+              </ReactMarkdown>
+              {msg.cost && <div className="cost">Cost: <strong>${parseFloat(msg.cost).toFixed(6)}</strong></div>}
+            </div>
+          ))}
+          <div ref={bottomRef}

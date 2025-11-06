@@ -15,7 +15,6 @@ export default function App() {
   const [model, setModel] = useState("gpt-4o-mini");
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_PROMPT);
   const [theme, setTheme] = useState("dark");
-  const esRef = useRef(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -42,57 +41,70 @@ export default function App() {
     const assistantMsg = { role: "assistant", content: "" };
     setMessages((m) => [...m, assistantMsg]);
 
-    if (esRef.current) esRef.current.close();
+    const payload = {
+      messages: [{ role: "system", content: systemPrompt }, ...messages, userMsg],
+      model,
+    };
 
-    const es = new EventSource("/api/chat", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [{ role: "system", content: systemPrompt }, ...messages, userMsg],
-        model,
-      }),
+      body: JSON.stringify(payload),
     });
 
-    esRef.current = es;
-
-    es.onmessage = (e) => {
-      if (e.data === "[DONE]") {
-        es.close();
-        setStreaming(false);
-        return;
-      }
-      try {
-        const data = JSON.parse(e.data);
-        if (data.content) {
-          setMessages((m) => {
-            const newM = [...m];
-            newM[newM.length - 1].content += data.content;
-            return newM;
-          });
-        }
-        if (data.cost) {
-          setMessages((m) => {
-            const newM = [...m];
-            newM[newM.length - 1].cost = data.cost;
-            return newM;
-          });
-        }
-      } catch {}
-    };
-
-    es.onerror = () => {
-      es.close();
+    if (!response.body) {
       setStreaming(false);
-      setMessages((m) => {
-        const newM = [...m];
-        newM[newM.length - 1].content += "\n\n*Connection lost.*";
-        return newM;
-      });
-    };
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+
+      for (const line of lines) {
+        const dataStr = line.slice(6);
+        if (dataStr === "[DONE]") {
+          setStreaming(false);
+          return;
+        }
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.content) {
+            setMessages((m) => {
+              const copy = [...m];
+              copy[copy.length - 1].content += data.content;
+              return copy;
+            });
+          }
+          if (data.cost) {
+            setMessages((m) => {
+              const copy = [...m];
+              copy[copy.length - 1].cost = data.cost;
+              return copy;
+            });
+          }
+          if (data.error) {
+            setMessages((m) => {
+              const copy = [...m];
+              copy[copy.length - 1].content += `\n\n*Error: ${data.error}*`;
+              return copy;
+            });
+            setStreaming(false);
+          }
+        } catch {}
+      }
+    }
+    setStreaming(false);
   };
 
   const regenerateLast = () => {
-    if (messages[messages.length - 1]?.role !== "assistant") return;
+    if (messages[messages.length - 1]?.role !== "assistant") follow;
     setMessages((m) => m.slice(0, -1));
     const lastUser = messages[messages.length - 2];
     if (lastUser) sendMessage(lastUser.content);

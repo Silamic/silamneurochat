@@ -1,4 +1,3 @@
-// src/components/ModelSelector.jsx
 import { MODELS } from "../lib/models";
 
 export default function ModelSelector({ model, onChange }) {

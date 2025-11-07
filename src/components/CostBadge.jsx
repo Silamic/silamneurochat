@@ -16,7 +16,7 @@ export default function CostBadge() {
   }, []);
 
   return (
-    <div className="text-xs opacity-70 text-right space-y-1 font-mono">
+    <div className="text-xs text-pink-600 font-mono">
       <div>Today: <strong>${today}</strong></div>
       <div>Total: <strong>${total}</strong></div>
     </div>

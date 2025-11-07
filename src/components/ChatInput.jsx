@@ -11,19 +11,18 @@ export default function ChatInput({ onSend, disabled }) {
   };
 
   return (
-    <div className="flex gap-2 p-4 border-t border-gray-700">
+    <div className="flex gap-2">
       <input
-        className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        placeholder="Ask Silam anything..."
+        placeholder="Send a message..."
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSend()}
+        onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
         disabled={disabled}
       />
       <button
         onClick={handleSend}
         disabled={disabled || !input.trim()}
-        className="px-5 py-2 bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50"
+        className="px-5 py-3 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition"
       >
         Send
       </button>

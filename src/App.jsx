@@ -1,21 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import ChatBubble from "./components/ChatBubble";
 import ChatInput from "./components/ChatInput";
 import ModelSelector from "./components/ModelSelector";
-import PromptEditor from "./components/PromptEditor";
 import ThemeToggle from "./components/ThemeToggle";
 import CostBadge from "./components/CostBadge";
 import { saveConversation, loadConversations } from "./lib/db";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 const DEFAULT_PROMPT = "You are Silam, a super-intelligent, witty, and helpful AI.";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [streaming, setStreaming] = useState(false);
-  const [model, setModel] = useState("gpt-4o-mini");
-  const [provider, setProvider] = useState("openai");
-  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_PROMPT);
-  const [theme, setTheme] = useState("dark");
+  const [model, setModel] = useState("llama3-8b-8192");
+  const [systemPrompt] = useState(DEFAULT_PROMPT);
+  const [theme, setTheme] = useState("light");
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -45,7 +46,6 @@ export default function App() {
     const payload = {
       messages: [{ role: "system", content: systemPrompt }, ...messages, userMsg],
       model,
-      provider,
     };
 
     const response = await fetch("/api/chat", {
@@ -113,39 +113,61 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${theme === "dark" ? "dark" : "light"}`}>
-      <div className="app-container">
-
-        <header className="header">
-          <h1 className="title">Silam NeuroChat</h1>
-          <div className="controls">
-            <ModelSelector model={model} provider={provider} onChange={setModel} onProviderChange={setProvider} />
-            <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "dark" ? "light" : "dark")} />
-            <CostBadge className="cost-badge" />
-          </div>
-        </header>
-
-        <div className="prompt-editor">
-          <PromptEditor prompt={systemPrompt} onChange={setSystemPrompt} />
+    <div className="min-h-screen flex flex-col bg-pink-50">
+      {/* Header */}
+      <header className="border-b border-pink-200 bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm">
+        <h1 className="text-xl font-semibold text-pink-700">Silam NeuroChat</h1>
+        <div className="flex items-center gap-3">
+          <ModelSelector model={model} onChange={setModel} />
+          <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "dark" ? "light" : "dark")} />
+          <CostBadge />
         </div>
+      </header>
 
-        <div className="chat-box">
-          {messages.map((msg, i) => (
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
             <div
-              key={i}
-              className={`bubble ${msg.role === "user" ? "user-bubble" : "bot-bubble"}`}
-              style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start" }}
+              className={`max-w-2xl px-5 py-3 rounded-2xl shadow-sm ${
+                msg.role === "user"
+                  ? "bg-pink-500 text-white"
+                  : "bg-white text-gray-800 border border-pink-100"
+              }`}
             >
               {msg.role === "assistant" && i === messages.length - 1 && (
-                <button className="regen-btn" onClick={regenerateLast}>Regenerate</button>
+                <button
+                  onClick={regenerateLast}
+                  className="float-right ml-2 text-xs opacity-70 hover:opacity-100 text-pink-600"
+                >
+                  Regenerate
+                </button>
               )}
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
+                className="prose prose-sm max-w-none text-inherit"
               >
                 {msg.content}
               </ReactMarkdown>
-              {msg.cost && <div className="cost">Cost: <strong>${parseFloat(msg.cost).toFixed(6)}</strong></div>}
+              {msg.cost && (
+                <div className="text-xs opacity-70 mt-2 font-mono">
+                  Cost: <strong>${parseFloat(msg.cost).toFixed(6)}</strong>
+                </div>
+              )}
             </div>
-          ))}
-          <div ref={bottomRef}
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-pink-200 bg-white/80 backdrop-blur-sm p-4">
+        <ChatInput onSend={sendMessage} disabled={streaming} />
+      </div>
+    </div>
+  );
+}

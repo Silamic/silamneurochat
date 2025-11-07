@@ -5,9 +5,9 @@ export default function ModelSelector({ model, onChange }) {
     <select
       value={model}
       onChange={(e) => onChange(e.target.value)}
-      className="bg-gray-800 text-sm rounded px-2 py-1"
+      className="px-3 py-2 rounded-lg border border-pink-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300"
     >
-      {MODELS.openai.map((m) => (
+      {MODELS.groq.map((m) => (
         <option key={m.id} value={m.id}>
           {m.name}
         </option>

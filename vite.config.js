@@ -5,12 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: "/",
   build: {
-    target: "esnext",
-    rollupOptions: {
-      external: [], // Include all deps
-    },
-  },
-  ssr: {
-    noExternal: true, // Bundle server-side for API
-  },
+    outDir: "dist"
+  }
 });

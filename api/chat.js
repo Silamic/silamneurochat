@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { Groq } from "groq-sdk";
 import { estimateTokens, calculateCost, logMessageCost } from "../src/lib/cost.js";
 
 export const config = { api: { bodyParser: false } };
@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   let body = "";
   for await (const chunk of req) body += chunk;
-  const { messages = [], model = "gpt-4o-mini", temperature = 0.7 } = JSON.parse(body || "{}");
+  const { messages = [], model = "llama3-8b-8192", temperature = 0.7 } = JSON.parse(body || "{}");
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   });
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const stream = await client.chat.completions.create({
       model,
       messages,
@@ -39,8 +39,8 @@ export default async function handler(req, res) {
     }
 
     const outputTokens = estimateTokens(streamed);
-    const cost = calculateCost(model, inputTokens, outputTokens);
-    await logMessageCost({ model, inputTokens, outputTokens, cost });
+    const cost = calculateCost(model, "groq", inputTokens, outputTokens);
+    await logMessageCost({ model, provider: "groq", inputTokens, outputTokens, cost });
 
     res.write(`data: ${JSON.stringify({ cost: cost.toFixed(6) })}\n\n`);
     res.write("data: [DONE]\n\n");

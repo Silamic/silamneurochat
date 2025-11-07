@@ -4,7 +4,9 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist"
+      }
     },
     {
       "src": "api/**/*.js",
@@ -18,10 +20,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/dist/index.html"
     }
-  ],
-  "env": {
-    "GROQ_API_KEY": "@groq_api_key"
-  }
+  ]
 }

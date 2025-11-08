@@ -113,61 +113,43 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-pink-50">
-      {/* Header */}
-      <header className="border-b border-pink-200 bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm">
-        <h1 className="text-xl font-semibold text-pink-700">Silam NeuroChat</h1>
-        <div className="flex items-center gap-3">
+  <div className="min-h-screen bg-gradient-to-br from-pink-50 to-pink-100">
+    <div className="app-container">
+
+      <header className="header">
+        <h1 className="title">Silam NeuroChat</h1>
+        <div className="controls">
           <ModelSelector model={model} onChange={setModel} />
-          <ThemeToggle theme={theme} onToggle={() => setTheme(t => t === "dark" ? "light" : "dark")} />
-          <CostBadge />
+          <CostBadge className="cost-badge" />
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="chat-box">
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`bubble ${msg.role === "user" ? "user-bubble" : "bot-bubble"}`}
+            style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start" }}
           >
-            <div
-              className={`max-w-2xl px-5 py-3 rounded-2xl shadow-sm ${
-                msg.role === "user"
-                  ? "bg-pink-500 text-white"
-                  : "bg-white text-gray-800 border border-pink-100"
-              }`}
+            {msg.role === "assistant" && i === messages.length - 1 && (
+              <button className="regen-btn" onClick={regenerateLast}>Regenerate</button>
+            )}
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
             >
-              {msg.role === "assistant" && i === messages.length - 1 && (
-                <button
-                  onClick={regenerateLast}
-                  className="float-right ml-2 text-xs opacity-70 hover:opacity-100 text-pink-600"
-                >
-                  Regenerate
-                </button>
-              )}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                className="prose prose-sm max-w-none text-inherit"
-              >
-                {msg.content}
-              </ReactMarkdown>
-              {msg.cost && (
-                <div className="text-xs opacity-70 mt-2 font-mono">
-                  Cost: <strong>${parseFloat(msg.cost).toFixed(6)}</strong>
-                </div>
-              )}
-            </div>
+              {msg.content}
+            </ReactMarkdown>
+            {msg.cost && <div className="cost">Cost: <strong>${parseFloat(msg.cost).toFixed(6)}</strong></div>}
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-pink-200 bg-white/80 backdrop-blur-sm p-4">
+      <div className="input-area">
         <ChatInput onSend={sendMessage} disabled={streaming} />
       </div>
+
     </div>
-  );
-}
+  </div>
+);

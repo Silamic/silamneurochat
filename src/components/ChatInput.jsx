@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Send } from "lucide-react";
 
 export default function ChatInput({ onSend, disabled }) {
   const [input, setInput] = useState("");
@@ -11,20 +12,21 @@ export default function ChatInput({ onSend, disabled }) {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-3 items-center bg-white border border-pink-300 rounded-2xl px-4 py-3 shadow-sm">
       <input
-        placeholder="Send a message..."
+        placeholder="Ask anything..."
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
         disabled={disabled}
+        className="flex-1 outline-none text-pink-900 placeholder-pink-400"
       />
       <button
         onClick={handleSend}
         disabled={disabled || !input.trim()}
-        className="px-5 py-3 bg-pink-500 text-white rounded-xl hover:bg-pink-600 transition"
+        className="p-2 rounded-lg bg-gradient-to-br from-pink-500 to-pink-600 text-white hover:from-pink-600 hover:to-pink-700 transition disabled:opacity-50"
       >
-        Send
+        <Send size={18} />
       </button>
     </div>
   );

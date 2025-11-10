@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import ChatInput from "./components/ChatInput";
 import ModelSelector from "./components/ModelSelector";
-import { saveConversation, loadConversations } from "./lib/db";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";

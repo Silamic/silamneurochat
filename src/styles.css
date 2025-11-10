@@ -1,8 +1,9 @@
+@import "katex/dist/katex.min.css";
+@import "lucide-react/dist/esm/styles/lucide.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "katex/dist/katex.min.css";
 
 /* Baby Pink Theme */
 :root {
@@ -170,15 +171,6 @@ button:disabled {
   color: white;
 }
 
-/* Cost */
-.cost {
-  font-size: 0.75rem;
-  opacity: 0.8;
-  margin-top: 0.5rem;
-  font-family: "Courier New", monospace;
-  color: var(--pink-700);
-}
-
 /* Input Area */
 .input-area {
   display: flex;
@@ -204,17 +196,6 @@ button:disabled {
   background: linear-gradient(135deg, var(--pink-500), var(--pink-600));
   padding: 0.75rem 1.5rem;
   font-weight: 600;
-}
-
-/* Cost Badge */
-.cost-badge {
-  font-family: "Courier New", monospace;
-  font-size: 0.75rem;
-  color: var(--pink-700);
-  text-align: right;
-}
-.cost-badge strong {
-  color: var(--pink-600);
 }
 
 /* Animations */
